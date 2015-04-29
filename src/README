@@ -1,0 +1,56 @@
+Description
+___________
+
+The scheduler uses the notion of time represented in time_t type which 
+has the granularity of 1 second.
+
+The scheduler accepts user job description from standard input.
+Job description has the format :
+
+<job command line (no blanks for simplicity)> <when to run from current time>
+
+Output directory : the assumption is that there is NFS mounted directory
+that is present on both localhost and remote system. That directory is used
+as the base for working directories for each job.
+Unique name is created for each job's working directory in the format :
+
+<base directory>/<job name>.<true random number>
+
+For simplicity, this type of command is used to simulate running the job on remote system :
+
+rsh localhost "cd /home/foobaruser/unique_wd && foobar "
+
+Scheduling mechanism is based on creating pthread for each scheduled job.
+Each thread waits for the scheduled time to arrive using very simple mechanism :
+calling sleep(1) in a loop. CPU time usage on this would be negligible.
+
+The alternative could be creating interval timers and delivering signals on
+timer expiration. But this mechanism is more complex and less scalable.
+The limit on pending signals is much lower that the limit on number of threads
+in a x86_64 Linux.
+
+How to compile on Linux
+_______________________
+
+  git clone https://github.com/kostyamalolin/spire.git
+  cd spire/Debug
+  make all
+  
+Run example
+___________
+
+kmalolin@ubuntu:/tmp/spire/Debug$ cat jobs.txt | ./foobarcrond
+./foobarcrond is running using the base wd : /home/foobaruser
+current time : 1430332981 job : true: scheduled to run at time : 1430332984
+current time : 1430332983 job : false: scheduled to run at time : 1430332987
+current time : 1430332984 job : foobar: scheduled to run at time : 1430332992
+job : true starts at 1430332984
+job : true finished, status : 0
+user notified to get results and status from the directory : /home/foobaruser/true.1856690684
+job : false starts at 1430332987
+job : false finished, status : 1
+user notified to get results and status from the directory : /home/foobaruser/false.486462221
+job : foobar starts at 1430332992
+bash: foobar: command not found
+job : foobar finished, status : 127
+user notified to get results and status from the directory : /home/foobaruser/foobar.861539486
